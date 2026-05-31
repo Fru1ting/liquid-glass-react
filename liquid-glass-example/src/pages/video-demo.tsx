@@ -1,5 +1,5 @@
 import { Geist } from "next/font/google"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import LiquidGlass from "liquid-glass-react"
 
 const geistSans = Geist({
@@ -9,21 +9,27 @@ const geistSans = Geist({
 
 export default function LiquidGlassDemo() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [videoError, setVideoError] = useState(false)
 
   return (
     <div className={`${geistSans.className} min-h-screen w-full overflow-hidden font-[family-name:var(--font-geist-sans)]`}>
       <div className="relative w-full h-screen">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="https://videos.pexels.com/video-files/7578307/7578307-uhd_2560_1440_25fps.mp4" type="video/mp4" />
-        </video>
+        {!videoError ? (
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            onError={() => setVideoError(true)}
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
+          </video>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 animate-pulse" />
+        )}
 
-        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 bg-black/40" />
 
         <div className="relative z-10 flex flex-col items-center justify-center h-full p-8">
           <h1 className="text-4xl md:text-5xl font-bold text-white text-center mb-12 drop-shadow-lg">
