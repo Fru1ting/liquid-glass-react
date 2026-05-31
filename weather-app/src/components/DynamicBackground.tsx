@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { WeatherCondition } from '../types/weather';
 import { getConditionColor } from '../utils/weatherIcons';
 
@@ -11,7 +11,11 @@ export const DynamicBackground: React.FC<DynamicBackgroundProps> = ({
   weatherCode,
   className = '',
 }) => {
-  const conditionColors = useMemo(() => {
+  const gradientRef = useRef<HTMLDivElement>(null);
+  const orb1Ref = useRef<HTMLDivElement>(null);
+  const orb2Ref = useRef<HTMLDivElement>(null);
+
+  const { conditionColors, condition } = useMemo(() => {
     const codeMap: Record<number, WeatherCondition> = {
       0: 'clear',
       1: 'partly-cloudy',
@@ -44,53 +48,114 @@ export const DynamicBackground: React.FC<DynamicBackgroundProps> = ({
     };
 
     const condition = codeMap[weatherCode] || 'clear';
-    const gradientClass = getConditionColor(condition);
 
     const baseColors: Record<WeatherCondition, string[]> = {
-      'clear': ['#FF9500', '#007AFF', '#5856D6'],
-      'partly-cloudy': ['#5AC8FA', '#007AFF', '#5AC8FA'],
-      'cloudy': ['#8E8E93', '#636366', '#48484A'],
-      'fog': ['#AEAEB2', '#8E8E93', '#636366'],
-      'drizzle': ['#64D2FF', '#5AC8FA', '#007AFF'],
-      'rain': ['#5856D6', '#AF52DE', '#FF2D55'],
-      'snow': ['#FFFFFF', '#B4D7FF', '#87CEEB'],
-      'thunderstorm': ['#5E17EB', '#301934', '#1C1425'],
+      'clear': ['#FFD700', '#4DA6FF', '#6C4AB6'],
+      'partly-cloudy': ['#87CEEB', '#4DA6FF', '#87CEEB'],
+      'cloudy': ['#B8B8B8', '#7A7A7A', '#5A5A5A'],
+      'fog': ['#C8C8C8', '#A8A8A8', '#888888'],
+      'drizzle': ['#98D8FF', '#64C2FF', '#3A8FFF'],
+      'rain': ['#5C4CFF', '#9B59B6', '#E74C3C'],
+      'snow': ['#F0F8FF', '#B0E0E6', '#87CEEB'],
+      'thunderstorm': ['#4B0082', '#2C1654', '#1C002F'],
     };
 
-    return baseColors[condition];
+    return { conditionColors: baseColors[condition], condition };
   }, [weatherCode]);
 
+  useEffect(() => {
+    let animationFrame: number;
+    let startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = (Date.now() - startTime) / 1000;
+
+      if (gradientRef.current) {
+        const rotation = (elapsed * 2) % 360;
+        gradientRef.current.style.background = `
+          linear-gradient(
+            ${135 + rotation}deg,
+            ${conditionColors[0]} 0%,
+            ${conditionColors[1]} 50%,
+            ${conditionColors[2]} 100%
+          )
+        `;
+      }
+
+      if (orb1Ref.current) {
+        const x = Math.sin(elapsed * 0.3) * 50;
+        const y = Math.cos(elapsed * 0.4) * 30;
+        orb1Ref.current.style.transform = `translate(${x}px, ${y}px)`;
+      }
+
+      if (orb2Ref.current) {
+        const x = Math.cos(elapsed * 0.2) * 40;
+        const y = Math.sin(elapsed * 0.5) * 35;
+        orb2Ref.current.style.transform = `translate(${x}px, ${y}px)`;
+      }
+
+      animationFrame = requestAnimationFrame(animate);
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [conditionColors]);
+
   return (
-    <div className={`fixed inset-0 -z-10 ${className}`}>
+    <div className={`fixed inset-0 -z-10 overflow-hidden ${className}`}>
       <div
-        className="absolute inset-0 animate-gradient-shift"
+        ref={gradientRef}
+        className="absolute inset-0 transition-all duration-1000 ease-out"
         style={{
           background: `linear-gradient(135deg, ${conditionColors[0]} 0%, ${conditionColors[1]} 50%, ${conditionColors[2]} 100%)`,
+          backgroundSize: '400% 400%',
         }}
       />
 
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30" />
 
-      <svg className="absolute inset-0 w-full h-full opacity-10">
+      <svg className="absolute inset-0 w-full h-full opacity-15">
         <defs>
-          <radialGradient id="sunGlow" cx="50%" cy="30%" r="40%">
-            <stop offset="0%" stopColor="white" stopOpacity="0.4" />
+          <radialGradient id="mainGlow" cx="50%" cy="30%" r="50%">
+            <stop offset="0%" stopColor="white" stopOpacity="0.5" />
             <stop offset="100%" stopColor="white" stopOpacity="0" />
           </radialGradient>
+          <radialGradient id="subGlow1" cx="20%" cy="60%" r="30%">
+            <stop offset="0%" stopColor={conditionColors[0]} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={conditionColors[0]} stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="subGlow2" cx="80%" cy="70%" r="35%">
+            <stop offset="0%" stopColor={conditionColors[2]} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={conditionColors[2]} stopOpacity="0" />
+          </radialGradient>
         </defs>
-        <circle cx="50%" cy="30%" r="30%" fill="url(#sunGlow)" />
+        <circle cx="50%" cy="30%" r="40%" fill="url(#mainGlow)" />
+        <circle cx="20%" cy="60%" r="25%" fill="url(#subGlow1)" />
+        <circle cx="80%" cy="70%" r="30%" fill="url(#subGlow2)" />
       </svg>
 
       <div
-        className="absolute -top-1/2 -right-1/4 w-[600px] h-[600px] rounded-full blur-3xl opacity-20"
+        ref={orb1Ref}
+        className="absolute -top-1/3 -right-1/4 w-[800px] h-[800px] rounded-full blur-3xl opacity-25 transition-transform duration-1000 ease-out"
         style={{
-          background: `radial-gradient(circle, ${conditionColors[0]} 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${conditionColors[0]} 0%, transparent 60%)`,
         }}
       />
+
       <div
-        className="absolute -bottom-1/4 -left-1/4 w-[400px] h-[400px] rounded-full blur-3xl opacity-15"
+        ref={orb2Ref}
+        className="absolute -bottom-1/3 -left-1/4 w-[600px] h-[600px] rounded-full blur-3xl opacity-20 transition-transform duration-1000 ease-out"
         style={{
-          background: `radial-gradient(circle, ${conditionColors[2]} 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${conditionColors[2]} 0%, transparent 60%)`,
+        }}
+      />
+
+      <div
+        className="absolute top-1/2 left-1/2 w-[400px] h-[400px] rounded-full blur-3xl opacity-10"
+        style={{
+          transform: 'translate(-50%, -50%)',
+          background: `radial-gradient(circle, ${conditionColors[1]} 0%, transparent 60%)`,
         }}
       />
     </div>
